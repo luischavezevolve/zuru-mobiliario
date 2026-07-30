@@ -1,6 +1,13 @@
 'use client';
 import { useState } from 'react';
-import catalogoTiendas from './tiendas.json';
+
+// Si existe tiendas.json lo usamos, y si no, no truca
+let CATALOGO_BASE: any[] = [];
+try {
+  CATALOGO_BASE = require('./tiendas.json');
+} catch (e) {
+  CATALOGO_BASE = [];
+}
 
 interface Tienda {
   cliente: string;
@@ -44,14 +51,17 @@ export default function Home() {
     'Otra'
   ];
 
-  // Buscador local que filtra entre las 3,257 tiendas al instante
-  const tiendasFiltradas = (catalogoTiendas as Tienda[]).filter((t) => {
-    if (!busqueda) return false;
-    const q = busqueda.toLowerCase();
+  // Filtrar asegurándonos de que solo se busquen textos válidos
+  const tiendasFiltradas = CATALOGO_BASE.filter((t) => {
+    if (!busqueda || typeof t !== 'object' || !t.tienda) return false;
+    const q = busqueda.toLowerCase().trim();
+    // Validar que no sea código basura
+    if (typeof t.tienda !== 'string' || t.tienda.includes('window') || t.tienda.includes('function')) return false;
+
     return (
-      t.numeroTienda.toLowerCase().includes(q) ||
-      t.tienda.toLowerCase().includes(q) ||
-      t.cliente.toLowerCase().includes(q)
+      String(t.numeroTienda || '').toLowerCase().includes(q) ||
+      String(t.tienda || '').toLowerCase().includes(q) ||
+      String(t.cliente || '').toLowerCase().includes(q)
     );
   }).slice(0, 15);
 
