@@ -13,7 +13,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [enviado, setEnviado] = useState(false);
 
-  // Catálogo descargado de Google Sheets
+  // Catálogo cargado desde Google Sheets
   const [catalogo, setCatalogo] = useState<Tienda[]>([]);
   const [cargandoCatalogo, setCargandoCatalogo] = useState(true);
 
@@ -47,30 +47,36 @@ export default function Home() {
     'Otra'
   ];
 
-  // Cargar catálogo de Google Sheets al iniciar
+  // Descarga directa en formato CSV (Infalible)
   useEffect(() => {
     const fetchCatalogo = async () => {
       try {
         const SHEET_ID = '1-Oc3g_LPO__xH9ZQRTvHIVBNQFuUBgLngbn5JeHM5So';
-        const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
+        const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
         
         const response = await fetch(url);
-        const text = await response.text();
+        const csvText = await response.text();
         
-        // Limpiar respuesta JSONP de Google
-        const jsonString = text.substring(47, text.length - 2);
-        const data = JSON.parse(jsonString);
-        
-        const rows = data.table.rows;
-        const tiendasParsed: Tienda[] = rows.map((row: any) => {
-          const c = row.c;
-          return {
-            cliente: c[0]?.v ? String(c[0].v) : '',
-            formato: c[1]?.v ? String(c[1].v) : '',
-            numeroTienda: c[2]?.v ? String(c[2].v) : '',
-            tienda: c[3]?.v ? String(c[3].v) : '',
-          };
-        }).filter((t: Tienda) => t.cliente && t.cliente !== 'CLIENTE'); // Filtrar encabezados
+        // Convertir CSV a objeto de tiendas
+        const lineas = csvText.split('\n');
+        const tiendasParsed: Tienda[] = [];
+
+        for (let i = 1; i < lineas.length; i++) {
+          const linea = lineas[i].trim();
+          if (!linea) continue;
+
+          // Separar por comas respetando comillas
+          const columnas = linea.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(col => col.replace(/^"|"$/g, '').trim());
+
+          if (columnas.length >= 4) {
+            tiendasParsed.push({
+              cliente: columnas[0] || '',
+              formato: columnas[1] || '',
+              numeroTienda: columnas[2] || '',
+              tienda: columnas[3] || '',
+            });
+          }
+        }
 
         setCatalogo(tiendasParsed);
       } catch (error) {
@@ -83,15 +89,16 @@ export default function Home() {
     fetchCatalogo();
   }, []);
 
-  // Filtrado dinámico por Número de Tienda (Determinante), Nombre de Tienda o Cliente
+  // Buscador inteligente en tiempo real
   const tiendasFiltradas = catalogo.filter((t) => {
-    const query = busqueda.toLowerCase();
+    if (!busqueda) return false;
+    const q = busqueda.toLowerCase();
     return (
-      t.numeroTienda.toLowerCase().includes(query) ||
-      t.tienda.toLowerCase().includes(query) ||
-      t.cliente.toLowerCase().includes(query)
+      t.numeroTienda.toLowerCase().includes(q) ||
+      t.tienda.toLowerCase().includes(q) ||
+      t.cliente.toLowerCase().includes(q)
     );
-  }).slice(0, 10); // Limitar a las primeras 10 coincidencias para rapidez
+  }).slice(0, 15);
 
   const handleCheckboxChange = (marca: string) => {
     if (marcasZuru.includes(marca)) {
@@ -224,7 +231,7 @@ export default function Home() {
               </select>
             </div>
 
-            {/* Buscador de Sucursal Dinámico conectado a Sheet */}
+            {/* Buscador de Sucursal Dinámico */}
             <div style={{ position: 'relative' }}>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>
                 Buscar Tienda por Determinante o Nombre
@@ -232,7 +239,7 @@ export default function Home() {
               <input
                 type="text"
                 required
-                placeholder={cargandoCatalogo ? 'Cargando catálogo oficial...' : 'Ej. 91 o Tecamac...'}
+                placeholder={cargandoCatalogo ? 'Cargando catálogo de tiendas...' : 'Ej. 91, Tecamac, Chedraui...'}
                 disabled={cargandoCatalogo}
                 value={tiendaSeleccionada ? `[${tiendaSeleccionada.numeroTienda}] ${tiendaSeleccionada.cliente} - ${tiendaSeleccionada.tienda}` : busqueda}
                 onChange={(e) => {
@@ -244,7 +251,7 @@ export default function Home() {
                 style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '10px', padding: '10px', fontSize: '13px', boxSizing: 'border-box', backgroundColor: cargandoCatalogo ? '#f3f4f6' : '#fff' }}
               />
 
-              {/* Sugerencias en tiempo real */}
+              {/* Sugerencias desplegables */}
               {mostrarSugerencias && busqueda && !tiendaSeleccionada && (
                 <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#ffffff', border: '1px solid #d1d5db', borderRadius: '10px', marginTop: '4px', maxHeight: '180px', overflowY: 'auto', zIndex: 20, boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
                   {tiendasFiltradas.length > 0 ? (
