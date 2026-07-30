@@ -1,19 +1,42 @@
 'use client';
 import { useState } from 'react';
 
+// Catálogo base de tiendas para el buscador
+const CATALOGO_TIENDAS = [
+  { cadena: 'Walmart', nombre: 'Walmart Satélite' },
+  { cadena: 'Walmart', nombre: 'Walmart Santa Fe' },
+  { cadena: 'Walmart', nombre: 'Walmart Universidad' },
+  { cadena: 'Walmart', nombre: 'Walmart Interlomas' },
+  { cadena: 'Chedraui', nombre: 'Chedraui Polanco' },
+  { cadena: 'Chedraui', nombre: 'Chedraui Selecto Coapa' },
+  { cadena: 'Soriana', nombre: 'Soriana Híper Miyana' },
+  { cadena: 'Liverpool', nombre: 'Liverpool Insurgentes' },
+  { cadena: 'Juguetron', nombre: 'Juguetron Perisur' },
+];
+
 export default function Home() {
   const [tipoRegistro, setTipoRegistro] = useState<'PROPIO' | 'COMPETENCIA'>('PROPIO');
   const [loading, setLoading] = useState(false);
   const [enviado, setEnviado] = useState(false);
 
-  // Estados del formulario
+  // Estados
   const [promotor, setPromotor] = useState('');
   const [ciudad, setCiudad] = useState('CDMX');
   const [cadena, setCadena] = useState('Walmart');
-  const [sucursal, setSucursal] = useState('');
+  
+  // Buscador de Sucursal
+  const [busquedaSucursal, setBusquedaSucursal] = useState('');
+  const [sucursalSeleccionada, setSucursalSeleccionada] = useState('');
+  const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
+
+  // Mobiliario y Marcas
   const [tipoMueble, setTipoMueble] = useState('Mamut');
+  const [muebleOtro, setMuebleOtro] = useState('');
   const [marcasZuru, setMarcasZuru] = useState<string[]>([]);
+  const [marcaOtraTexto, setMarcaOtraTexto] = useState('');
   const [llenado, setLlenado] = useState('100%');
+  
+  // Competencia
   const [competidor, setCompetidor] = useState('');
   const [lineaCompetidor, setLineaCompetidor] = useState('');
   const [foto, setFoto] = useState<File | null>(null);
@@ -27,6 +50,11 @@ export default function Home() {
     'Otra'
   ];
 
+  // Filtrar tiendas según la cadena y lo que escribe el usuario
+  const tiendasFiltradas = CATALOGO_TIENDAS.filter(
+    (t) => t.cadena === cadena && t.nombre.toLowerCase().includes(busquedaSucursal.toLowerCase())
+  );
+
   const handleCheckboxChange = (marca: string) => {
     if (marcasZuru.includes(marca)) {
       setMarcasZuru(marcasZuru.filter((m) => m !== marca));
@@ -38,12 +66,11 @@ export default function Home() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!foto) {
-      alert('Por favor toma o selecciona una fotografía antes de enviar.');
+      alert('Por favor toma o selecciona una fotografía de evidencia.');
       return;
     }
     setLoading(true);
     
-    // Simulación de envío por ahora
     setTimeout(() => {
       setLoading(false);
       setEnviado(true);
@@ -55,16 +82,18 @@ export default function Home() {
       <div style={{ minHeight: '100vh', backgroundColor: '#f3f4f6', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px', fontFamily: 'sans-serif' }}>
         <div style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '16px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', textAlign: 'center', maxWidth: '380px', width: '100%' }}>
           <div style={{ fontSize: '48px', marginBottom: '12px' }}>✅</div>
-          <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px' }}>¡Captura Exitosa!</h2>
-          <p style={{ color: '#4b5563', marginBottom: '20px', fontSize: '14px' }}>El registro del mobiliario ha sido guardado correctamente en el repositorio.</p>
+          <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px' }}>¡Reporte Registrado!</h2>
+          <p style={{ color: '#4b5563', marginBottom: '20px', fontSize: '14px' }}>Los datos y evidencia se han guardado con éxito.</p>
           <button
             onClick={() => {
               setEnviado(false);
               setFoto(null);
+              setBusquedaSucursal('');
+              setSucursalSeleccionada('');
             }}
             style={{ width: '100%', backgroundColor: '#2563eb', color: '#ffffff', fontWeight: 'bold', padding: '12px 0', borderRadius: '12px', border: 'none', cursor: 'pointer' }}
           >
-            Hacer otra captura
+            Navegar nueva captura
           </button>
         </div>
       </div>
@@ -85,7 +114,7 @@ export default function Home() {
       </header>
 
       <main style={{ maxWidth: '400px', margin: '0 auto', padding: '16px' }}>
-        {/* Selector de Tipo de Registro */}
+        {/* Selector de Tipo */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', backgroundColor: '#e5e7eb', padding: '4px', borderRadius: '12px', marginBottom: '16px' }}>
           <button
             type="button"
@@ -123,7 +152,7 @@ export default function Home() {
 
         <form onSubmit={handleSubmit} style={{ backgroundColor: '#ffffff', padding: '20px', borderRadius: '16px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           
-          {/* Ubicación y Promotor */}
+          {/* Ubicación */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <h2 style={{ fontSize: '12px', fontWeight: 'bold', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 }}>
               📍 Datos de Ubicación
@@ -134,7 +163,7 @@ export default function Home() {
               <input
                 type="text"
                 required
-                placeholder="Tu nombre completo"
+                placeholder="Nombre y Apellido"
                 value={promotor}
                 onChange={(e) => setPromotor(e.target.value)}
                 style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '10px', padding: '10px', fontSize: '14px', boxSizing: 'border-box' }}
@@ -162,7 +191,11 @@ export default function Home() {
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Cadena</label>
                 <select
                   value={cadena}
-                  onChange={(e) => setCadena(e.target.value)}
+                  onChange={(e) => {
+                    setCadena(e.target.value);
+                    setBusquedaSucursal('');
+                    setSucursalSeleccionada('');
+                  }}
                   style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '10px', padding: '10px', fontSize: '14px', backgroundColor: '#fff', boxSizing: 'border-box' }}
                 >
                   <option value="Walmart">Walmart</option>
@@ -176,16 +209,54 @@ export default function Home() {
               </div>
             </div>
 
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Sucursal / Tienda</label>
+            {/* Buscador de Sucursal Dinámico */}
+            <div style={{ position: 'relative' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>
+                Buscar Sucursal / Tienda
+              </label>
               <input
                 type="text"
                 required
-                placeholder="Ej. Satélite, Santa Fe, Universidad"
-                value={sucursal}
-                onChange={(e) => setSucursal(e.target.value)}
+                placeholder="Escribe para buscar tienda..."
+                value={sucursalSeleccionada || busquedaSucursal}
+                onChange={(e) => {
+                  setBusquedaSucursal(e.target.value);
+                  setSucursalSeleccionada('');
+                  setMostrarSugerencias(true);
+                }}
+                onFocus={() => setMostrarSugerencias(true)}
                 style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '10px', padding: '10px', fontSize: '14px', boxSizing: 'border-box' }}
               />
+
+              {/* Lista Desplegable de Sugerencias */}
+              {mostrarSugerencias && busquedaSucursal && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#ffffff', border: '1px solid #d1d5db', borderRadius: '10px', marginTop: '4px', maxHeight: '150px', overflowY: 'auto', zIndex: 20, boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+                  {tiendasFiltradas.length > 0 ? (
+                    tiendasFiltradas.map((item, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => {
+                          setSucursalSeleccionada(item.nombre);
+                          setMostrarSugerencias(false);
+                        }}
+                        style={{ padding: '10px', fontSize: '13px', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
+                      >
+                        📍 {item.nombre}
+                      </div>
+                    ))
+                  ) : (
+                    <div
+                      onClick={() => {
+                        setSucursalSeleccionada(busquedaSucursal);
+                        setMostrarSugerencias(false);
+                      }}
+                      style={{ padding: '10px', fontSize: '12px', color: '#2563eb', cursor: 'pointer', fontWeight: 'bold' }}
+                    >
+                      ➕ Usar "{busquedaSucursal}" (Nueva tienda)
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -211,6 +282,7 @@ export default function Home() {
                     <option value="Cabezal">Cabezal</option>
                     <option value="Isla">Isla</option>
                     <option value="Tira de Impulso">Tira de Impulso</option>
+                    <option value="Otro">Otro Mueble</option>
                   </select>
                 </div>
 
@@ -230,6 +302,20 @@ export default function Home() {
                 </div>
               </div>
 
+              {tipoMueble === 'Otro' && (
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Especifique el tipo de mueble</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ej. Botadero, Exhibidor especial"
+                    value={muebleOtro}
+                    onChange={(e) => setMuebleOtro(e.target.value)}
+                    style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '10px', padding: '10px', fontSize: '14px', boxSizing: 'border-box' }}
+                  />
+                </div>
+              )}
+
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>Marcas Cargadas</label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -244,10 +330,22 @@ export default function Home() {
                     </label>
                   ))}
                 </div>
+
+                {marcasZuru.includes('Otra') && (
+                  <div style={{ marginTop: '8px' }}>
+                    <input
+                      type="text"
+                      placeholder="Escribe la marca nueva..."
+                      value={marcaOtraTexto}
+                      onChange={(e) => setMarcaOtraTexto(e.target.value)}
+                      style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '10px', padding: '8px', fontSize: '13px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           ) : (
-            /* Módulo Competencia */
+            /* Competencia */
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <h2 style={{ fontSize: '12px', fontWeight: 'bold', color: '#dc2626', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 }}>
                 🏪 Detalle Competencia
@@ -280,7 +378,7 @@ export default function Home() {
 
           <hr style={{ border: 'none', borderTop: '1px solid #f3f4f6', margin: 0 }} />
 
-          {/* Carga de Foto */}
+          {/* Fotografía */}
           <div>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Fotografía de Evidencia</label>
             <label style={{ border: '2px dashed #d1d5db', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', backgroundColor: '#f9fafb' }}>
