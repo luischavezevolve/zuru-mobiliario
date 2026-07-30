@@ -1,5 +1,6 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import catalogoTiendas from './tiendas.json';
 
 interface Tienda {
   cliente: string;
@@ -12,10 +13,6 @@ export default function Home() {
   const [tipoRegistro, setTipoRegistro] = useState<'PROPIO' | 'COMPETENCIA'>('PROPIO');
   const [loading, setLoading] = useState(false);
   const [enviado, setEnviado] = useState(false);
-
-  // Catálogo cargado desde Google Sheets
-  const [catalogo, setCatalogo] = useState<Tienda[]>([]);
-  const [cargandoCatalogo, setCargandoCatalogo] = useState(true);
 
   // Estados del formulario
   const [promotor, setPromotor] = useState('');
@@ -47,50 +44,8 @@ export default function Home() {
     'Otra'
   ];
 
-  // Descarga directa en formato CSV (Infalible)
-  useEffect(() => {
-    const fetchCatalogo = async () => {
-      try {
-        const SHEET_ID = '1-Oc3g_LPO__xH9ZQRTvHIVBNQFuUBgLngbn5JeHM5So';
-        const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv`;
-        
-        const response = await fetch(url);
-        const csvText = await response.text();
-        
-        // Convertir CSV a objeto de tiendas
-        const lineas = csvText.split('\n');
-        const tiendasParsed: Tienda[] = [];
-
-        for (let i = 1; i < lineas.length; i++) {
-          const linea = lineas[i].trim();
-          if (!linea) continue;
-
-          // Separar por comas respetando comillas
-          const columnas = linea.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(col => col.replace(/^"|"$/g, '').trim());
-
-          if (columnas.length >= 4) {
-            tiendasParsed.push({
-              cliente: columnas[0] || '',
-              formato: columnas[1] || '',
-              numeroTienda: columnas[2] || '',
-              tienda: columnas[3] || '',
-            });
-          }
-        }
-
-        setCatalogo(tiendasParsed);
-      } catch (error) {
-        console.error('Error cargando catálogo:', error);
-      } finally {
-        setCargandoCatalogo(false);
-      }
-    };
-
-    fetchCatalogo();
-  }, []);
-
-  // Buscador inteligente en tiempo real
-  const tiendasFiltradas = catalogo.filter((t) => {
+  // Buscador local que filtra entre las 3,257 tiendas al instante
+  const tiendasFiltradas = (catalogoTiendas as Tienda[]).filter((t) => {
     if (!busqueda) return false;
     const q = busqueda.toLowerCase();
     return (
@@ -239,8 +194,7 @@ export default function Home() {
               <input
                 type="text"
                 required
-                placeholder={cargandoCatalogo ? 'Cargando catálogo de tiendas...' : 'Ej. 91, Tecamac, Chedraui...'}
-                disabled={cargandoCatalogo}
+                placeholder="Ej. 91, Tecamac, Chedraui..."
                 value={tiendaSeleccionada ? `[${tiendaSeleccionada.numeroTienda}] ${tiendaSeleccionada.cliente} - ${tiendaSeleccionada.tienda}` : busqueda}
                 onChange={(e) => {
                   setBusqueda(e.target.value);
@@ -248,7 +202,7 @@ export default function Home() {
                   setMostrarSugerencias(true);
                 }}
                 onFocus={() => setMostrarSugerencias(true)}
-                style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '10px', padding: '10px', fontSize: '13px', boxSizing: 'border-box', backgroundColor: cargandoCatalogo ? '#f3f4f6' : '#fff' }}
+                style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '10px', padding: '10px', fontSize: '13px', boxSizing: 'border-box' }}
               />
 
               {/* Sugerencias desplegables */}
