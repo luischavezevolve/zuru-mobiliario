@@ -1,32 +1,29 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
-// Catálogo base de tiendas para el buscador
-const CATALOGO_TIENDAS = [
-  { cadena: 'Walmart', nombre: 'Walmart Satélite' },
-  { cadena: 'Walmart', nombre: 'Walmart Santa Fe' },
-  { cadena: 'Walmart', nombre: 'Walmart Universidad' },
-  { cadena: 'Walmart', nombre: 'Walmart Interlomas' },
-  { cadena: 'Chedraui', nombre: 'Chedraui Polanco' },
-  { cadena: 'Chedraui', nombre: 'Chedraui Selecto Coapa' },
-  { cadena: 'Soriana', nombre: 'Soriana Híper Miyana' },
-  { cadena: 'Liverpool', nombre: 'Liverpool Insurgentes' },
-  { cadena: 'Juguetron', nombre: 'Juguetron Perisur' },
-];
+interface Tienda {
+  cliente: string;
+  formato: string;
+  numeroTienda: string;
+  tienda: string;
+}
 
 export default function Home() {
   const [tipoRegistro, setTipoRegistro] = useState<'PROPIO' | 'COMPETENCIA'>('PROPIO');
   const [loading, setLoading] = useState(false);
   const [enviado, setEnviado] = useState(false);
 
-  // Estados
+  // Catálogo descargado de Google Sheets
+  const [catalogo, setCatalogo] = useState<Tienda[]>([]);
+  const [cargandoCatalogo, setCargandoCatalogo] = useState(true);
+
+  // Estados del formulario
   const [promotor, setPromotor] = useState('');
   const [ciudad, setCiudad] = useState('CDMX');
-  const [cadena, setCadena] = useState('Walmart');
   
   // Buscador de Sucursal
-  const [busquedaSucursal, setBusquedaSucursal] = useState('');
-  const [sucursalSeleccionada, setSucursalSeleccionada] = useState('');
+  const [busqueda, setBusqueda] = useState('');
+  const [tiendaSeleccionada, setTiendaSeleccionada] = useState<Tienda | null>(null);
   const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
 
   // Mobiliario y Marcas
@@ -50,10 +47,51 @@ export default function Home() {
     'Otra'
   ];
 
-  // Filtrar tiendas según la cadena y lo que escribe el usuario
-  const tiendasFiltradas = CATALOGO_TIENDAS.filter(
-    (t) => t.cadena === cadena && t.nombre.toLowerCase().includes(busquedaSucursal.toLowerCase())
-  );
+  // Cargar catálogo de Google Sheets al iniciar
+  useEffect(() => {
+    const fetchCatalogo = async () => {
+      try {
+        const SHEET_ID = '1-Oc3g_LPO__xH9ZQRTvHIVBNQFuUBgLngbn5JeHM5So';
+        const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
+        
+        const response = await fetch(url);
+        const text = await response.text();
+        
+        // Limpiar respuesta JSONP de Google
+        const jsonString = text.substring(47, text.length - 2);
+        const data = JSON.parse(jsonString);
+        
+        const rows = data.table.rows;
+        const tiendasParsed: Tienda[] = rows.map((row: any) => {
+          const c = row.c;
+          return {
+            cliente: c[0]?.v ? String(c[0].v) : '',
+            formato: c[1]?.v ? String(c[1].v) : '',
+            numeroTienda: c[2]?.v ? String(c[2].v) : '',
+            tienda: c[3]?.v ? String(c[3].v) : '',
+          };
+        }).filter((t: Tienda) => t.cliente && t.cliente !== 'CLIENTE'); // Filtrar encabezados
+
+        setCatalogo(tiendasParsed);
+      } catch (error) {
+        console.error('Error cargando catálogo:', error);
+      } finally {
+        setCargandoCatalogo(false);
+      }
+    };
+
+    fetchCatalogo();
+  }, []);
+
+  // Filtrado dinámico por Número de Tienda (Determinante), Nombre de Tienda o Cliente
+  const tiendasFiltradas = catalogo.filter((t) => {
+    const query = busqueda.toLowerCase();
+    return (
+      t.numeroTienda.toLowerCase().includes(query) ||
+      t.tienda.toLowerCase().includes(query) ||
+      t.cliente.toLowerCase().includes(query)
+    );
+  }).slice(0, 10); // Limitar a las primeras 10 coincidencias para rapidez
 
   const handleCheckboxChange = (marca: string) => {
     if (marcasZuru.includes(marca)) {
@@ -88,12 +126,12 @@ export default function Home() {
             onClick={() => {
               setEnviado(false);
               setFoto(null);
-              setBusquedaSucursal('');
-              setSucursalSeleccionada('');
+              setBusqueda('');
+              setTiendaSeleccionada(null);
             }}
             style={{ width: '100%', backgroundColor: '#2563eb', color: '#ffffff', fontWeight: 'bold', padding: '12px 0', borderRadius: '12px', border: 'none', cursor: 'pointer' }}
           >
-            Navegar nueva captura
+            Hacer otra captura
           </button>
         </div>
       </div>
@@ -170,89 +208,61 @@ export default function Home() {
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Ciudad</label>
-                <select
-                  value={ciudad}
-                  onChange={(e) => setCiudad(e.target.value)}
-                  style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '10px', padding: '10px', fontSize: '14px', backgroundColor: '#fff', boxSizing: 'border-box' }}
-                >
-                  <option value="CDMX">CDMX / EdoMex</option>
-                  <option value="Guadalajara">Guadalajara</option>
-                  <option value="Monterrey">Monterrey</option>
-                  <option value="Puebla">Puebla</option>
-                  <option value="Querétaro">Querétaro</option>
-                  <option value="Otra">Otra</option>
-                </select>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Cadena</label>
-                <select
-                  value={cadena}
-                  onChange={(e) => {
-                    setCadena(e.target.value);
-                    setBusquedaSucursal('');
-                    setSucursalSeleccionada('');
-                  }}
-                  style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '10px', padding: '10px', fontSize: '14px', backgroundColor: '#fff', boxSizing: 'border-box' }}
-                >
-                  <option value="Walmart">Walmart</option>
-                  <option value="Chedraui">Chedraui</option>
-                  <option value="Soriana">Soriana</option>
-                  <option value="Liverpool">Liverpool</option>
-                  <option value="Juguetron">Juguetron</option>
-                  <option value="Julio Cepeda">Julio Cepeda</option>
-                  <option value="Otra">Otra</option>
-                </select>
-              </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Ciudad / Zona</label>
+              <select
+                value={ciudad}
+                onChange={(e) => setCiudad(e.target.value)}
+                style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '10px', padding: '10px', fontSize: '14px', backgroundColor: '#fff', boxSizing: 'border-box' }}
+              >
+                <option value="CDMX">CDMX / EdoMex</option>
+                <option value="Guadalajara">Guadalajara</option>
+                <option value="Monterrey">Monterrey</option>
+                <option value="Puebla">Puebla</option>
+                <option value="Querétaro">Querétaro</option>
+                <option value="Otra">Otra</option>
+              </select>
             </div>
 
-            {/* Buscador de Sucursal Dinámico */}
+            {/* Buscador de Sucursal Dinámico conectado a Sheet */}
             <div style={{ position: 'relative' }}>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>
-                Buscar Sucursal / Tienda
+                Buscar Tienda por Determinante o Nombre
               </label>
               <input
                 type="text"
                 required
-                placeholder="Escribe para buscar tienda..."
-                value={sucursalSeleccionada || busquedaSucursal}
+                placeholder={cargandoCatalogo ? 'Cargando catálogo oficial...' : 'Ej. 91 o Tecamac...'}
+                disabled={cargandoCatalogo}
+                value={tiendaSeleccionada ? `[${tiendaSeleccionada.numeroTienda}] ${tiendaSeleccionada.cliente} - ${tiendaSeleccionada.tienda}` : busqueda}
                 onChange={(e) => {
-                  setBusquedaSucursal(e.target.value);
-                  setSucursalSeleccionada('');
+                  setBusqueda(e.target.value);
+                  setTiendaSeleccionada(null);
                   setMostrarSugerencias(true);
                 }}
                 onFocus={() => setMostrarSugerencias(true)}
-                style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '10px', padding: '10px', fontSize: '14px', boxSizing: 'border-box' }}
+                style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: '10px', padding: '10px', fontSize: '13px', boxSizing: 'border-box', backgroundColor: cargandoCatalogo ? '#f3f4f6' : '#fff' }}
               />
 
-              {/* Lista Desplegable de Sugerencias */}
-              {mostrarSugerencias && busquedaSucursal && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#ffffff', border: '1px solid #d1d5db', borderRadius: '10px', marginTop: '4px', maxHeight: '150px', overflowY: 'auto', zIndex: 20, boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+              {/* Sugerencias en tiempo real */}
+              {mostrarSugerencias && busqueda && !tiendaSeleccionada && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, backgroundColor: '#ffffff', border: '1px solid #d1d5db', borderRadius: '10px', marginTop: '4px', maxHeight: '180px', overflowY: 'auto', zIndex: 20, boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
                   {tiendasFiltradas.length > 0 ? (
                     tiendasFiltradas.map((item, idx) => (
                       <div
                         key={idx}
                         onClick={() => {
-                          setSucursalSeleccionada(item.nombre);
+                          setTiendaSeleccionada(item);
                           setMostrarSugerencias(false);
                         }}
-                        style={{ padding: '10px', fontSize: '13px', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
+                        style={{ padding: '10px', fontSize: '12px', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
                       >
-                        📍 {item.nombre}
+                        <strong style={{ color: '#2563eb' }}>#{item.numeroTienda}</strong> - {item.cliente} ({item.tienda})
                       </div>
                     ))
                   ) : (
-                    <div
-                      onClick={() => {
-                        setSucursalSeleccionada(busquedaSucursal);
-                        setMostrarSugerencias(false);
-                      }}
-                      style={{ padding: '10px', fontSize: '12px', color: '#2563eb', cursor: 'pointer', fontWeight: 'bold' }}
-                    >
-                      ➕ Usar "{busquedaSucursal}" (Nueva tienda)
+                    <div style={{ padding: '10px', fontSize: '12px', color: '#6b7280' }}>
+                      No se encontraron tiendas con "{busqueda}"
                     </div>
                   )}
                 </div>
